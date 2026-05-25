@@ -1,70 +1,132 @@
-# Thunder Energy - Data Engineering Challenge
+# ⚡ Thunder Energy — Data Engineering Challenge
 
-## Setup Instructions
+A PostgreSQL + Python pipeline that ingests energy telemetry data and computes **run hours** and **power output (kW)** per energy source per hour.
 
-### Prerequisites
-- Docker Desktop or PostgreSQL 13+
+---
+
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [Assumptions](#assumptions)
+- [Expected Output](#expected-output)
+- [Worked Examples](#worked-examples)
+- [Tech Stack](#tech-stack)
+
+---
+
+## Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) **or** PostgreSQL 13+
 - Python 3.9+
 
-### Start PostgreSQL
+---
+
+## Quick Start
+
+### 1. Clone the repository
 
 ```bash
-docker run --name postgres-energy -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=thunder_energy -p 5432:5432 -d postgres:15
-
-### Install Dependencies
-
-pip install -r requirements.txt
-
-### Load Data
-
-python load_data.py
-
-### Run Calculations
-
-python task2_run_hours.py
-python task3_power_kw.py
-
-### Assumptions
-
-Source detection – Case-insensitive substring match (ILIKE '%DG%'). "DG+Solar" counts for both DG and Solar.
-
-Run hours – Each row = 3 minutes. Formula: (count × 3) ÷ 60. Max = 1.0 hour per source per hour.
-
-Negative battery current – Indicates discharging. Negative kW is correct per spec.
-
-Timezone – CSV timestamps have +05 offset. PostgreSQL stores as TIMESTAMPTZ (UTC). Hour windows use DATE_TRUNC('hour', timestamp).
-
-No Mains data – Grid query included but dataset has no "Mains" rows.
-
-### Reproduce Results
-
 git clone https://github.com/AliMateen012/thunder-energy-challenge.git
 cd thunder-energy-challenge
-docker run --name postgres-energy -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=thunder_energy -p 5432:5432 -d postgres:15
+```
+
+### 2. Start PostgreSQL
+
+```bash
+docker run --name postgres-energy \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=thunder_energy \
+  -p 5432:5432 \
+  -d postgres:15
+```
+
+### 3. Install Python dependencies
+
+```bash
 pip install -r requirements.txt
+```
+
+### 4. Load data
+
+```bash
 python load_data.py
+```
+
+> ✅ Expect **480 rows** to be loaded.
+
+### 5. Run calculations
+
+```bash
 python task2_run_hours.py
 python task3_power_kw.py
+```
 
-### Expected Output
+Results are written to the `output/` directory.
 
-480 rows loaded
+---
 
-output/run_hours.csv – 45 rows, run_hours ≤ 1.0
+## Project Structure
 
-output/power_kw.csv – 45 rows, kw rounded to 2 decimals
+```
+thunder-energy-challenge/
+├── load_data.py            # Ingests CSV data into PostgreSQL
+├── task2_run_hours.py      # Calculates run hours per source per hour
+├── task3_power_kw.py       # Calculates power output (kW) per source per hour
+├── requirements.txt
+└── output/
+    ├── run_hours.csv       # 45 rows, run_hours ≤ 1.0
+    └── power_kw.csv        # 45 rows, kW rounded to 2 decimals
+```
 
-### Worked Example 
+---
 
-DG kW = 109.3 × 48.9 ÷ 1000 = 5.345 kW ✅
+## Assumptions
 
-Run hours per reading = 3 ÷ 60 = 0.05 hours ✅
+| Topic | Assumption |
+|---|---|
+| **Source detection** | Case-insensitive substring match (`ILIKE '%DG%'`). `"DG+Solar"` counts for both DG and Solar. |
+| **Run hours** | Each row = 3 minutes. Formula: `(count × 3) ÷ 60`. Max = 1.0 hour per source per hour. |
+| **Battery current** | Negative current indicates discharging. Negative kW values are correct per spec. |
+| **Timezone** | CSV timestamps carry a `+05` offset. PostgreSQL stores as `TIMESTAMPTZ` (UTC). Hour windows use `DATE_TRUNC('hour', timestamp)`. |
+| **Mains data** | Grid query is included, but the dataset contains no `"Mains"` rows. |
 
-### Technologies
-Python 3.9+
+---
 
-PostgreSQL 15
+## Expected Output
 
-Pandas, SQLAlchemy, Psycopg2
+| File | Rows | Notes |
+|---|---|---|
+| `output/run_hours.csv` | 45 | `run_hours` ≤ 1.0 per source per hour |
+| `output/power_kw.csv` | 45 | `kw` rounded to 2 decimal places |
 
-Docker
+---
+
+## Worked Examples
+
+**DG power calculation:**
+
+```
+DG kW = voltage × current ÷ 1000
+      = 109.3 × 48.9 ÷ 1000
+      = 5.35 kW ✅
+```
+
+**Run hours per reading:**
+
+```
+run_hours = 3 minutes ÷ 60
+          = 0.05 hours per reading ✅
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Python 3.9+ |
+| Database | PostgreSQL 15 |
+| Libraries | Pandas, SQLAlchemy, Psycopg2 |
+| Infrastructure | Docker |
